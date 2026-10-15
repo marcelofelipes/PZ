@@ -5,7 +5,7 @@ set -euo pipefail
 TS="$(date +%Y%m%d_%H%M%S)"
 FILE="/backups/pz_${SERVER_NAME}_${TS}.tar.gz"
 
-if [ -n "${RCON_PASSWORD}" ]; then
+if [ -n "${RCON_PASSWORD:-}" ]; then
     rcon-cli -c /home/steam/server/rcon.yaml save > /dev/null 2>&1 || true
     sleep 5
 fi

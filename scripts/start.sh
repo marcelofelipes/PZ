@@ -3,6 +3,13 @@
 set -euo pipefail
 cd /home/steam/server
 
+export SERVER_PASSWORD="${SERVER_PASSWORD:-}"
+export RCON_PASSWORD="${RCON_PASSWORD:-}"
+if [ -z "${ADMIN_PASSWORD:-}" ]; then
+    echo "[start] AVISO: ADMIN_PASSWORD não definido, usando 'changeme'"
+    ADMIN_PASSWORD=changeme
+fi
+
 if [ "${UPDATE_ON_BOOT}" = "true" ] || [ ! -f "${SERVER_DIR}/start-server.sh" ]; then
     ./update.sh
 fi
