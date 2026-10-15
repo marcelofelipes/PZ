@@ -1,0 +1,31 @@
+services:
+  pz:
+    build: .
+    image: pz-server
+    container_name: pz-server
+    restart: unless-stopped
+    stop_grace_period: 60s
+    ports:
+      - "16261:16261/udp"
+      - "16262:16262/udp"
+      - "27015:27015/tcp"
+    environment:
+      SERVER_NAME: servertest
+      ADMIN_PASSWORD: changeme
+      SERVER_PASSWORD: ""
+      RCON_PASSWORD: changeme-rcon
+      MAX_PLAYERS: 16
+      MEMORY: 4g
+      TZ: America/Sao_Paulo
+    volumes:
+      - steamcmd_login_volume:/home/steam/Steam
+      - steamcmd_volume:/home/steam/steamcmd
+      - pz_server:/pz
+      - pz_data:/home/steam/Zomboid
+      - ./backups:/backups
+
+volumes:
+  steamcmd_login_volume:
+  steamcmd_volume:
+  pz_server:
+  pz_data:
