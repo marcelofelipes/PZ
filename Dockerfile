@@ -17,6 +17,22 @@ RUN wget -q https://github.com/gorcon/rcon-cli/archive/refs/tags/v${RCON_VERSION
     && rm -rf rcon-cli-${RCON_VERSION} \
     && go build -v ./cmd/gorcon
 
+# Box64: https://github.com/ptitSeb/box64/releases
+# Compilado do fonte para usar uma versão mais nova que a da imagem base (só arm64).
+FROM debian:trixie-slim AS box64_builder
+ARG TARGETARCH
+ARG BOX64_VERSION="v0.4.4"
+# hadolint ignore=DL3008
+RUN mkdir -p /out && if [ "${TARGETARCH}" = "arm64" ]; then \
+    apt-get update && apt-get install -y --no-install-recommends \
+    git ca-certificates cmake make gcc g++ python3 \
+    && git clone --depth 1 --branch "${BOX64_VERSION}" https://github.com/ptitSeb/box64.git /src \
+    && mkdir /src/build && cd /src/build \
+    && cmake .. -DARM_DYNAREC=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DNOGIT=1 \
+    && make -j"$(nproc)" \
+    && make install DESTDIR=/out ; \
+    fi
+
 FROM cm2network/steamcmd:root-trixie AS base-amd64
 # Ignoring --platform=arm64 as this is required for the multi-arch build to continue to work on amd64 hosts
 # hadolint ignore=DL3029
@@ -27,7 +43,7 @@ FROM base-${TARGETARCH}
 ARG TARGETARCH
 
 LABEL name="pz-server-docker" \
-      description="Project Zomboid dedicated server (amd64/arm64)"
+    description="Project Zomboid dedicated server (amd64/arm64)"
 
 # SUPERCRONIC: https://github.com/aptible/supercronic/releases
 ARG SUPERCRONIC_SHA1SUM_ARM64="639ab81a72771990790df7ee87d9acfe88e5fa83"
@@ -49,14 +65,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
+# install box64 atualizado (arm64) sobrescrevendo o da imagem base
+COPY --from=box64_builder /out/ /
+RUN if [ "${TARGETARCH}" = "arm64" ]; then \
+    for old in $(which -a box64 | grep -v '^/usr/local/bin/box64$' || true); do \
+    ln -sf /usr/local/bin/box64 "${old}"; \
+    done \
+    && box64 --version ; \
+    fi
+
 # install rcon
 COPY --from=rcon-cli_builder /build/gorcon /usr/bin/rcon-cli
 
 # install supercronic
 # hadolint ignore=DL4001
 RUN case "${TARGETARCH}" in \
-        "amd64") SUPERCRONIC_SHA1SUM=${SUPERCRONIC_SHA1SUM_AMD64} ;; \
-        "arm64") SUPERCRONIC_SHA1SUM=${SUPERCRONIC_SHA1SUM_ARM64} ;; \
+    "amd64") SUPERCRONIC_SHA1SUM=${SUPERCRONIC_SHA1SUM_AMD64} ;; \
+    "arm64") SUPERCRONIC_SHA1SUM=${SUPERCRONIC_SHA1SUM_ARM64} ;; \
     esac \
     && wget --progress=dot:giga "https://github.com/aptible/supercronic/releases/download/v${SUPERCRONIC_VERSION}/supercronic-linux-${TARGETARCH}" -O supercronic \
     && echo "${SUPERCRONIC_SHA1SUM}" supercronic | sha1sum -c - \
