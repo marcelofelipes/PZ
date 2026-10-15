@@ -13,7 +13,10 @@ if [ ! -f .env ]; then
     echo "[run] .env não encontrado, criando a partir de .env.example — edite as senhas!"
     cp .env.example .env
 fi
-set -a; . ./.env; set +a
+env_get() { grep -E "^$1=" .env | tail -n1 | cut -d= -f2- | tr -d '\r'; }
+PORT="$(env_get PORT)"
+UDP_PORT="$(env_get UDP_PORT)"
+RCON_PORT="$(env_get RCON_PORT)"
 
 build() {
     echo "[run] Build ${IMAGE} (${PLATFORM})"
